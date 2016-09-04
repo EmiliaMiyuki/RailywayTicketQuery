@@ -31,7 +31,7 @@ char * get_station_code(const char * station) {
 }
 
 void get_train_list(const char * start, const char * end, const char * date, int type = TRAIN_TYPE_NORMAL) {
-    char str[20000];
+    char str[100000];
     http_get("kyfw.12306.cn", 
         (string("https://kyfw.12306.cn/otn/leftTicket/queryT?leftTicketDTO.train_date=")+date+"&leftTicketDTO.from_station="+start+"&leftTicketDTO.to_station="+end+"&purpose_codes="+"ADULT").c_str(), 
         str, 
