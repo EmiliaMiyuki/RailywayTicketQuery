@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <boost/program_options.hpp>
+#include <boost/regex.hpp>
 #include "network.hpp"
 #include "json.hpp"
 
@@ -38,8 +40,20 @@ void print_help() {
     printf("    -s  --student   查询学生票\n");
 }
 
-char * get_station_code(const char * station) {
+string get_station_code(string station) {
+    static bool content_got = false;
+    static char str[100000];
+    if (!content_got) {
+        http_get("kyfw.12306.cn", "https://kyfw.12306.cn/otn/resources/js/framework/station_name.js", str);
+        content_got = true;
+    }
 
+    boost::cmatch matches;
+    boost::regex  pattern((string() + "([A-Z]{3})\\|" + station).c_str());
+    if (boost::regex_search(str, matches, pattern)) {
+        return matches[1].str();
+    }
+    return string("");
 }
 
 bool train_type_flite(char first_char) {
@@ -102,20 +116,20 @@ void get_train_list(const char * start, const char * end, const char * date, int
 }
 
 int main(int argc, const char ** argv){
-	po::options_description desc("参数说明");  
+	po::options_description desc("");  
     desc.add_options()  
-    	("to", po::value<string>(), "终点(必须)")
-		("from", po::value<string>(), "起始地 (必须)")
-		("time", po::value<string>(), "触发时间 (必须)")
-		("help,h", "显示此帮助信息")  
-		("train_d,d", "显示动车车票")
-		("train_g,g", "显示城际/高铁车票")
-		("train_z,z", "显示直达车票")
-        ("train_t,t", "显示特快车票")
-		("train_k,k", "显示快速车票")
-		("train_o,o", "显示其他车票")
-		("all,a", "显示全部车票 (此选项的优先级最高)")
-		("student,s", "查询学生票");
+    	("to", po::value<string>(), "")
+		("from", po::value<string>(), "")
+		("time", po::value<string>(), "")
+		("help,h", "")  
+		("train_d,d", "")
+		("train_g,g", "")
+		("train_z,z", "")
+        ("train_t,t", "")
+		("train_k,k", "")
+		("train_o,o", "")
+		("all,a", "")
+		("student,s", "");
 
 	boost::program_options::positional_options_description poptd;
 	poptd.add("time", 1);
@@ -167,13 +181,22 @@ int main(int argc, const char ** argv){
             ticket_type = TRAIN_TYPE_STUDENT;
     	}
 
-    	cout << "你查询的是于"
+        string s_from = get_station_code(vm["from"].as<string>()), s_to = get_station_code(vm["to"].as<string>());
+        if (s_from.size() == 0) {
+            cout << "出发车站\""+ vm["from"].as<string>() +"\"不正确。\n";
+            return 1;
+        }
+        if (s_to.size() == 0) {
+            cout << "终点车站\""+ vm["to"].as<string>() +"\"不正确。\n";
+            return 1;
+        }
+    	cout << "\n你查询的是于"
     		<< vm["time"].as<string>()
 			<< "从" << vm["from"].as<string>()
 			<< "到" << vm["to"].as<string>() << "的火车" << endl;
         if (ticket_type == TRAIN_TYPE_STUDENT) 
             cout << " (学生票)";
-        get_train_list(vm["from"].as<string>().c_str(), vm["to"].as<string>().c_str(), vm["time"].as<string>().c_str(), TRAIN_TYPE_NORMAL);
+        get_train_list(s_from.c_str(), s_to.c_str(), vm["time"].as<string>().c_str(), TRAIN_TYPE_NORMAL);
     }
  	catch(exception& e)
     {
